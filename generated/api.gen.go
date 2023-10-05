@@ -8,14 +8,12 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"fmt"
-	"net/http"
 	"net/url"
 	"path"
 	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"
-	"github.com/oapi-codegen/runtime"
 )
 
 // ErrorResponse defines model for ErrorResponse.
@@ -23,21 +21,27 @@ type ErrorResponse struct {
 	Message string `json:"message"`
 }
 
-// HelloResponse defines model for HelloResponse.
-type HelloResponse struct {
-	Message string `json:"message"`
+// Registration defines model for Registration.
+type Registration struct {
+	FullName    string `json:"full_name"`
+	Password    string `json:"password"`
+	PhoneNumber string `json:"phone_number"`
 }
 
-// HelloParams defines parameters for Hello.
-type HelloParams struct {
-	Id int `form:"id" json:"id"`
+// RegistrationResponse defines model for RegistrationResponse.
+type RegistrationResponse struct {
+	FullName *string `json:"full_name,omitempty"`
+	Id       *int32  `json:"id,omitempty"`
 }
+
+// RegistrationJSONRequestBody defines body for Registration for application/json ContentType.
+type RegistrationJSONRequestBody = Registration
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// This is just a test endpoint to get you started. Please delete this endpoint.
-	// (GET /hello)
-	Hello(ctx echo.Context, params HelloParams) error
+	// Sign up to the server
+	// (POST /registration)
+	Registration(ctx echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -45,21 +49,12 @@ type ServerInterfaceWrapper struct {
 	Handler ServerInterface
 }
 
-// Hello converts echo context to params.
-func (w *ServerInterfaceWrapper) Hello(ctx echo.Context) error {
+// Registration converts echo context to params.
+func (w *ServerInterfaceWrapper) Registration(ctx echo.Context) error {
 	var err error
 
-	// Parameter object where we will unmarshal all parameters from the context
-	var params HelloParams
-	// ------------- Required query parameter "id" -------------
-
-	err = runtime.BindQueryParameter("form", true, true, "id", ctx.QueryParams(), &params.Id)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter id: %s", err))
-	}
-
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.Hello(ctx, params)
+	err = w.Handler.Registration(ctx)
 	return err
 }
 
@@ -91,20 +86,21 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
-	router.GET(baseURL+"/hello", wrapper.Hello)
+	router.POST(baseURL+"/registration", wrapper.Registration)
 
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/7RSTY/TMBD9K9bAMWoK7Cl3JPYAQrCcVj2Y5DVx5djemUmlqsp/R+O20JU4wsmO52Xe",
-	"x8yZ+jyXnJBUqDuT9BNmX68fmTN/g5ScBPZQOBewBtTyDBE/1oKeCqgjUQ5ppHVtiPGyBMZA3fNv4K65",
-	"AfPPA3qltaFPiDH/Vw5DhrTP1iOGHlee5GdDfX58MhkaNNrnDwG77+Bj6EENHcEScqKO3m22m60hc0Hy",
-	"JVBHH+pTQ8XrVMW2k5mx2wi1w5x4DTk9DtRdrFY8+xkKFuqezxSs/csCPlFzUxUGurenvKC5TuYuipAU",
-	"I5jWdWfoS4ZVyfvt1o4+J0WqUnwpMfRVTHsQs3S+a/iWsaeO3rR/dqG9LkL7ekI1zgHScyh6ieYJoo6h",
-	"CycL6GH78M+4X2/gX7i/ZHX7vKShLoQs8+z5ZJqmIC6IOyyizjs1iUhDySGp0+xGqDvlxYl6Vgwb9zXC",
-	"C9yACIVT+/2G31yIBXy8zWzhSB1NqqVr25h7H6csSutu/RUAAP//x+wl0k8DAAA=",
+	"H4sIAAAAAAAC/7RTsW7bMBD9FeHa0YiUpBPHAB0ydHHaKQgChjpJDCSSvTu6MAz9e8FT6kSpWy/tZPr4",
+	"pPfevacDuDilGDAIgzkAuwEnq8fPRJG2yCkGxjJIFBOSeNTrCZltrxeyTwgGWMiHHuZ5A4Tfsydswdwf",
+	"gQ+bX8D49IxOYN7AFnvPQlZ8DL9TdHkcH4OdTpFsIFnmH5Ha05dDDPgY8vSEdF7iCr15w/uG5Zz8P2/q",
+	"7za8GugiTVbAgA9yfQVHLh8EeyRV/I6+jHzoYnl89A5fuBci+HL7tbxdvIzl7zdGqu6Qdt4VVzsk1pXD",
+	"5UVz0RRkTBhs8mDgWkfFugxqoKb3MUWW8ltc6vC2BbMOc1kwstzEdl+wLgbBoI/ZlEbvFFc/8/LKpXjl",
+	"9JGwAwMf6tdm1i+1rFcUuoEW2ZFPi7KVhEpi5QitYJVZc32NXCijdmDJTF1eNZf/ReexGOf0cnYOmbs8",
+	"ljw+Nc0/k7P+lE/ouLFttV3yYu0a52mytAcDd74PVU5lmzJgxUg77WMB6ZnB3B8g0wgGBpFk6nqMzo5D",
+	"Kcn8MP8MAAD//5pTByxjBAAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

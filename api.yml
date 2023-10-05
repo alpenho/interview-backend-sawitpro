@@ -1,5 +1,5 @@
 # This is the OpenAPI specification for your service. It is used to generate the client code.
-# To generate the server code, use the Gradle task `openApiGenerate`. The 
+# To generate the server code, use the Gradle task `openApiGenerate`. The
 # generated code will be placed in `build/generate-resources/main`.
 #
 # We will evaluate you based on how well you design your API.
@@ -17,37 +17,53 @@ info:
 servers:
   - url: http://localhost
 paths:
-  /hello:
-    get:
-      summary: This is just a test endpoint to get you started. Please delete this endpoint.
-      operationId: hello
-      parameters:
-        - name: id
-          in: query
-          required: true
-          schema:
-            type: integer
+  /registration:
+    post:
+      summary: Sign up to the server
+      operationId: registration
+      requestBody:
+        description: Registration to create user
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Registration"
       responses:
-        '200':
-          description: Test return
+        '201':
+          description: Registration successful
           content:
-            application/json:    
+            application/json:
               schema:
-                $ref: "#/components/schemas/HelloResponse"
-        '404':
-          description: Not found
+                $ref: '#/components/schemas/RegistrationResponse'
+        '400':
+          description: Bad Requests
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
-    HelloResponse:
+    Registration:
       type: object
-      required:
-        - message
       properties:
-        message:
+        phone_number:
+          type: string
+        full_name:
+          type: string
+        password:
+          type: string
+      required:
+        - phone_number
+        - full_name
+        - password
+    RegistrationResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        full_name:
           type: string
     ErrorResponse:
       type: object
