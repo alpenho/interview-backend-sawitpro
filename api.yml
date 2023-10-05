@@ -34,9 +34,51 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RegistrationResponse'
+                $ref: "#/components/schemas/RegistrationResponse"
         '400':
           description: Bad Requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /my-profile:
+    get:
+      summary: Getting detail profile
+      operationId: getProfile
+      responses:
+        '200':
+          description: Profile data user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileDataResponse"
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /login:
+    post:
+      summary: Login to the server
+      operationId: login
+      requestBody:
+        description: Data for login
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Login"
+      reponses:
+        '201':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        '400':
+          description: Login unsuccessful
           content:
             application/json:
               schema:
@@ -57,12 +99,29 @@ components:
         - phone_number
         - full_name
         - password
+    Login:
+      type: object
+      properties:
+        phone_number:
+          type: string
+        password:
+          type: string
+      required:
+        - phone_number
+        - password
     RegistrationResponse:
       type: object
       properties:
         id:
           type: integer
           format: int32
+        full_name:
+          type: string
+    ProfileDataResponse:
+      type: object
+      properties:
+        phone_number:
+          type: string
         full_name:
           type: string
     ErrorResponse:

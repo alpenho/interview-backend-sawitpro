@@ -21,6 +21,18 @@ type ErrorResponse struct {
 	Message string `json:"message"`
 }
 
+// Login defines model for Login.
+type Login struct {
+	Password    string `json:"password"`
+	PhoneNumber string `json:"phone_number"`
+}
+
+// ProfileDataResponse defines model for ProfileDataResponse.
+type ProfileDataResponse struct {
+	FullName    *string `json:"full_name,omitempty"`
+	PhoneNumber *string `json:"phone_number,omitempty"`
+}
+
 // Registration defines model for Registration.
 type Registration struct {
 	FullName    string `json:"full_name"`
@@ -34,11 +46,20 @@ type RegistrationResponse struct {
 	Id       *int32  `json:"id,omitempty"`
 }
 
+// LoginJSONRequestBody defines body for Login for application/json ContentType.
+type LoginJSONRequestBody = Login
+
 // RegistrationJSONRequestBody defines body for Registration for application/json ContentType.
 type RegistrationJSONRequestBody = Registration
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Login to the server
+	// (POST /login)
+	Login(ctx echo.Context) error
+	// Getting detail profile
+	// (GET /my-profile)
+	GetProfile(ctx echo.Context) error
 	// Sign up to the server
 	// (POST /registration)
 	Registration(ctx echo.Context) error
@@ -47,6 +68,24 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// Login converts echo context to params.
+func (w *ServerInterfaceWrapper) Login(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.Login(ctx)
+	return err
+}
+
+// GetProfile converts echo context to params.
+func (w *ServerInterfaceWrapper) GetProfile(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetProfile(ctx)
+	return err
 }
 
 // Registration converts echo context to params.
@@ -86,6 +125,8 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.POST(baseURL+"/login", wrapper.Login)
+	router.GET(baseURL+"/my-profile", wrapper.GetProfile)
 	router.POST(baseURL+"/registration", wrapper.Registration)
 
 }
@@ -93,14 +134,16 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/7RTsW7bMBD9FeHa0YiUpBPHAB0ydHHaKQgChjpJDCSSvTu6MAz9e8FT6kSpWy/tZPr4",
-	"pPfevacDuDilGDAIgzkAuwEnq8fPRJG2yCkGxjJIFBOSeNTrCZltrxeyTwgGWMiHHuZ5A4Tfsydswdwf",
-	"gQ+bX8D49IxOYN7AFnvPQlZ8DL9TdHkcH4OdTpFsIFnmH5Ha05dDDPgY8vSEdF7iCr15w/uG5Zz8P2/q",
-	"7za8GugiTVbAgA9yfQVHLh8EeyRV/I6+jHzoYnl89A5fuBci+HL7tbxdvIzl7zdGqu6Qdt4VVzsk1pXD",
-	"5UVz0RRkTBhs8mDgWkfFugxqoKb3MUWW8ltc6vC2BbMOc1kwstzEdl+wLgbBoI/ZlEbvFFc/8/LKpXjl",
-	"9JGwAwMf6tdm1i+1rFcUuoEW2ZFPi7KVhEpi5QitYJVZc32NXCijdmDJTF1eNZf/ReexGOf0cnYOmbs8",
-	"ljw+Nc0/k7P+lE/ouLFttV3yYu0a52mytAcDd74PVU5lmzJgxUg77WMB6ZnB3B8g0wgGBpFk6nqMzo5D",
-	"Kcn8MP8MAAD//5pTByxjBAAA",
+	"H4sIAAAAAAAC/8RUQU/cPBD9K9F833FLFugpR9QWIbVSBe0JIWScSWLk2O7MmGqF9r9XdrJZFkJR0dKe",
+	"4thjz3tv3sw9aN8H79AJQ3UPrDvsVV5+JPJ0jhy8Y0wbgXxAEoP5uEdm1eYDWQWECljIuBbW6wUQ/oiG",
+	"sIbqcgq8WmwC/c0taoH1Aj771rinbwfF/NNTPfP4AkLnHV672N8gvZx9J3qxfXkOzVfyjbH4QYl6nncT",
+	"rb12qsdXgnuS9Rxbw0JKjHd/nO7NhNrmfUG0h/Bfq5rJBBpPvRKowDg5PoIpl3GCLdKcemnLuMan69Zo",
+	"HHMPieDL2bf0uhix6fc7IxUXSHdGJ1Z3SJwlh8OD5cEyRfqATgUDFRznrURdukygtJNVPUv6JnqZ9VkN",
+	"1ejkJGlWIN85Wh6mj/ZO0OU7KgRrdL5V3vJQ76Hl0up/wgYq+K/c9mQ5NmSZ35/0zcRrZE0mDL4ZABQc",
+	"tUbmJtrE5/1yuTcAu+PgWQDRPYQwegxZTny92q8YcxhS6xaNp8JO5dg4XChihsObArlo7QI49r2i1URA",
+	"fCEdFox0N3qu7FfvwjAaErAWZ8p/ijJOD9jJkUywvxrMDagZFcawok5qRE40kheO/54XPnm6MXWNLgu4",
+	"lfgURYxrixpFGVtsVM0q0+M5ONtnO9Pybdy1k2KG3MPzZBdNqAQHoX/vuP2OhNnJ+xLefzggTlRdnA/1",
+	"4ke+uDCtK2J40nwpKK8Zqst7iGShgk4kVGVpvVa2SyZZX61/BQAA///XQBaeyAgAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

@@ -9,12 +9,17 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// Login defines model for Login.
+type LoginResponse struct {
+	Id int32 `json:"id"`
+}
+
 // Registration implements generated.ServerInterface.
 func (s *Server) Registration(ctx echo.Context) error {
 	requestBody := new(generated.Registration)
 	ctx.Bind(requestBody)
 
-	err := validateRequestBody(requestBody)
+	err := validateRegistrationRequestBody(requestBody)
 	if err != "" {
 		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
@@ -26,7 +31,32 @@ func (s *Server) Registration(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, resp)
 }
 
-func validateRequestBody(requestBody *generated.Registration) (error_message string) {
+// Login implements generated.ServerInterface.
+func (*Server) Login(ctx echo.Context) error {
+	requestBody := new(generated.Login)
+	ctx.Bind(requestBody)
+
+	err := validateLoginRequestBody(requestBody)
+	if err != "" {
+		return echo.NewHTTPError(http.StatusBadRequest, err)
+	}
+
+	response := new(LoginResponse)
+	response.Id = 321
+	return ctx.JSON(http.StatusOK, response)
+}
+
+// GetProfile implements generated.ServerInterface.
+func (*Server) GetProfile(ctx echo.Context) error {
+	response := new(generated.ProfileDataResponse)
+	var fullName string = "Alpen Halim"
+	var phoneNumber string = "+6285883949378"
+	response.FullName = &fullName
+	response.PhoneNumber = &phoneNumber
+	return ctx.JSON(http.StatusOK, response)
+}
+
+func validateRegistrationRequestBody(requestBody *generated.Registration) (error_message string) {
 	errorMessageMap := map[int]string{
 		1: "All of the form data must be filled in",
 		2: "phone number doesn't have country code",
@@ -58,6 +88,14 @@ func validateRequestBody(requestBody *generated.Registration) (error_message str
 		error_message = errorMessageMap[7]
 	} else if !haveSpecialChar {
 		error_message = errorMessageMap[8]
+	}
+
+	return error_message
+}
+
+func validateLoginRequestBody(requestBody *generated.Login) (error_message string) {
+	if requestBody.Password == "" || requestBody.PhoneNumber == "" {
+		error_message = "All of the form data must be filled in"
 	}
 
 	return error_message
