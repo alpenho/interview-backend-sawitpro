@@ -8,9 +8,12 @@
   */
 
 /** This is test table. Remove this table and replace with your own tables. */
-CREATE TABLE user (
+CREATE TABLE Users (
 	id serial PRIMARY KEY,
-	full_name VARCHAR ( 200 ) NOT NULL,
-  phone_number VARCHAR (120) NOT NULL,
-  password VARCHAR ( 120 ) NOT NULL,
+	full_name VARCHAR ( 60 ) NOT NULL,
+  phone_number VARCHAR ( 15 ) NOT NULL,
+  password CHAR ( 60 ) NOT NULL,
+  successful_login INT NOT NULL
 );
+
+INSERT INTO Users (full_name, phone_number, password, successful_login) VALUES ('Alpen Halim', '+6285883949378', '$2a$12$n9p4U0CmPdCQHJsiP/Xlf.lj5MV6fmqh2nnOnGj6XmEswkaAxnayO', 0)

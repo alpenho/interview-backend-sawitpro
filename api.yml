@@ -117,8 +117,6 @@ components:
         id:
           type: integer
           format: int32
-        full_name:
-          type: string
         access_token:
           type: string
     ProfileDataResponse:

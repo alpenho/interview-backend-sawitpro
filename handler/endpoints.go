@@ -9,6 +9,7 @@ import (
 	"unicode"
 
 	"github.com/SawitProRecruitment/UserService/generated"
+	"github.com/SawitProRecruitment/UserService/repository"
 	"github.com/labstack/echo/v4"
 )
 
@@ -38,25 +39,30 @@ func (s *Server) Registration(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, err)
 	}
 
-	var user UserData
-	user.Id = 321
-	user.FullName = requestBody.FullName
-	user.PhoneNumber = requestBody.PhoneNumber
+	var input repository.CreateUserInput
+	input.FullName = requestBody.FullName
+	input.PhoneNumber = requestBody.PhoneNumber
+	input.Password = HashAndSalt(requestBody.Password)
+	output, err := s.Repository.CreateUser(ctx.Request().Context(), input)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err)
+	}
+
+	user := UserData{Id: output.Id}
 	tok, err := NewJWT(prvKey, nil).Create(time.Hour, user)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusForbidden, err)
 	}
 
-	var resp generated.RegistrationResponse
-	var id int32 = 321
-	resp.Id = &id
-	resp.FullName = &requestBody.FullName
-	resp.AccessToken = &tok
+	resp := generated.RegistrationResponse{
+		Id:          &output.Id,
+		AccessToken: &tok,
+	}
 	return ctx.JSON(http.StatusOK, resp)
 }
 
 // Login implements generated.ServerInterface.
-func (*Server) Login(ctx echo.Context) error {
+func (s *Server) Login(ctx echo.Context) error {
 	requestBody := new(generated.Login)
 	ctx.Bind(requestBody)
 
@@ -66,12 +72,12 @@ func (*Server) Login(ctx echo.Context) error {
 	}
 
 	response := new(LoginResponse)
-	response.Id = 321
+	response.Id = 1
 	return ctx.JSON(http.StatusOK, response)
 }
 
 // GetProfile implements generated.ServerInterface.
-func (*Server) GetProfile(ctx echo.Context) error {
+func (s *Server) GetProfile(ctx echo.Context) error {
 	pubKey, err := os.ReadFile("rsakey.pem.pub")
 	if err != nil {
 		return echo.NewHTTPError(http.StatusForbidden, err)
@@ -84,9 +90,16 @@ func (*Server) GetProfile(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, err)
 	}
 
+	var input repository.GetUserByIdInput
+	input.Id = content.UserId
+	data, err := s.Repository.GetUserById(ctx.Request().Context(), input)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, err)
+	}
+
 	response := new(generated.ProfileDataResponse)
-	response.FullName = &content.FullName
-	response.PhoneNumber = &content.PhoneNumber
+	response.FullName = &data.FullName
+	response.PhoneNumber = &data.PhoneNumber
 
 	return ctx.JSON(http.StatusOK, response)
 }

@@ -13,9 +13,7 @@ type JWT struct {
 }
 
 type CustomClaims struct {
-	UserId      int32  `json:"user_id"`
-	FullName    string `json:"full_name,omitempty"`
-	PhoneNumber string `json:"phone_number,omitempty"`
+	UserId int32 `json:"user_id"`
 	jwt.StandardClaims
 }
 
@@ -35,12 +33,10 @@ func (j JWT) Create(ttl time.Duration, content UserData) (string, error) {
 	now := time.Now().UTC()
 
 	var claims CustomClaims
-	claims.UserId = content.Id               // Our custom data.
-	claims.FullName = content.FullName       // Our custom data.
-	claims.PhoneNumber = content.PhoneNumber // Our custom data.
-	claims.ExpiresAt = now.Add(ttl).Unix()   // The expiration time after which the token must be disregarded.
-	claims.IssuedAt = now.Unix()             // The time at which the token was issued.
-	claims.NotBefore = now.Unix()            // The time before which the token must be disregarded.
+	claims.UserId = content.Id             // Our custom data.
+	claims.ExpiresAt = now.Add(ttl).Unix() // The expiration time after which the token must be disregarded.
+	claims.IssuedAt = now.Unix()           // The time at which the token was issued.
+	claims.NotBefore = now.Unix()          // The time before which the token must be disregarded.
 
 	token, err := jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(key)
 	if err != nil {
