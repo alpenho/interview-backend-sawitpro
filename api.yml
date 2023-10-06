@@ -119,6 +119,8 @@ components:
           format: int32
         full_name:
           type: string
+        access_token:
+          type: string
     ProfileDataResponse:
       type: object
       properties:
