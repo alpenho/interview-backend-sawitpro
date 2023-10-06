@@ -34,12 +34,12 @@ type UpdateUserSuccessfulLoginOutput struct {
 	SuccessfulLogin int32
 }
 
-type UpdateUserFullNameAndPhoneNumberInput struct {
+type UpdateUserFullNameOrPhoneNumberInput struct {
 	Id          int32
-	PhoneNumber string
-	FullName    string
+	PhoneNumber *string
+	FullName    *string
 }
 
-type UpdateUserFullNameAndPhoneNumberOutput struct {
+type UpdateUserFullNameOrPhoneNumberOutput struct {
 	Id int32
 }

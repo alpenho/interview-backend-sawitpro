@@ -31,6 +31,12 @@ type Login struct {
 	PhoneNumber string `json:"phone_number"`
 }
 
+// LoginResponse defines model for LoginResponse.
+type LoginResponse struct {
+	AccessToken *string `json:"access_token,omitempty"`
+	Id          *int32  `json:"id,omitempty"`
+}
+
 // ProfileDataResponse defines model for ProfileDataResponse.
 type ProfileDataResponse struct {
 	FullName    *string `json:"full_name,omitempty"`
@@ -50,11 +56,25 @@ type RegistrationResponse struct {
 	Id          *int32  `json:"id,omitempty"`
 }
 
+// UpdateProfile defines model for UpdateProfile.
+type UpdateProfile struct {
+	FullName    *string `json:"full_name,omitempty"`
+	PhoneNumber *string `json:"phone_number,omitempty"`
+}
+
+// UpdateProfileResponse defines model for UpdateProfileResponse.
+type UpdateProfileResponse struct {
+	Message string `json:"message"`
+}
+
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = Login
 
 // RegistrationJSONRequestBody defines body for Registration for application/json ContentType.
 type RegistrationJSONRequestBody = Registration
+
+// UpdateProfileJSONRequestBody defines body for UpdateProfile for application/json ContentType.
+type UpdateProfileJSONRequestBody = UpdateProfile
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -67,6 +87,9 @@ type ServerInterface interface {
 	// Sign up to the server
 	// (POST /registration)
 	Registration(ctx echo.Context) error
+	// Updating the profile
+	// (POST /update-profile)
+	UpdateProfile(ctx echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -103,6 +126,15 @@ func (w *ServerInterfaceWrapper) Registration(ctx echo.Context) error {
 	return err
 }
 
+// UpdateProfile converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateProfile(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateProfile(ctx)
+	return err
+}
+
 // This is a simple interface which specifies echo.Route addition functions which
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
@@ -134,23 +166,26 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.POST(baseURL+"/login", wrapper.Login)
 	router.GET(baseURL+"/my-profile", wrapper.GetProfile)
 	router.POST(baseURL+"/registration", wrapper.Registration)
+	router.POST(baseURL+"/update-profile", wrapper.UpdateProfile)
 
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/8RVQW/UPBD9K9F83zE025ZTblTQqggk1BZxqFaVN5kkLo5txuOiVZX/juxksxuasgJt",
-	"4bR2bM+8ee/N7CMUprVGo2YH+SO4osFWxOU7IkNX6KzRDsMHS8YiscR43KJzoo4HvLYIOTgmqWvouhQI",
-	"v3lJWEJ+O15cppuLZnWPBUOXwgdTS/00thXOfTdUzgRPwTZG45327Qppf/bJ7XQbeQ7NJzKVVPhWsHi+",
-	"7sordadFi38I7knWK6ylYxIsjf7tdC9G1DbvHtJ24T/PmigKdO6OzVfUs2BlrKEy1AqGHKTm0xMY00nN",
-	"WCPNEdil4LDwJHl9Hczb5ztDQUhvPDdht4q7803w919uIO2tHiL1p9tkDbOFLgSWujLhvZIFDmX1UsDH",
-	"y5uAmiWrsP3skJJrpAdZBMIekFxUE46PFkeLcNNY1MJKyOE0fgqschOxZmrsAuM4/AbmIqGXJeRDkwS1",
-	"IrnxzcniOPwURjPq+EZYq2QRX2X3rrdS381h9T9hBTn8l23bPRt6PYvxR+li4SW6gqTtLdkDSJyPGlZe",
-	"hXpeLxYHAzCdNM8C8HoXwmBfdHxmyvVhyZjDEKZCUhlK1CjHpnmYPEY4biOQ9kql4HzbClqPBbBJuMHE",
-	"IT0MXs7a9SvbT50ArMYZ+S+Qh8EEkxzBBIfTYG72zbAwXEvKwIZ3oYzghdO/54VzQytZlqgnrQ/57bTp",
-	"b5fdcleBC2SWuk5KZCFVsiE9ikA/T+DZNpzM6Zcx3yTFTO2758FNBaFg7HX4tSEPOzFmZ/4+vP9wfpyJ",
-	"Mrnq9XK9bUZfXMtaJ94+6c3orbB20Vqe1PDPkGeZMoVQTTBJt+x+BAAA//8R2eeVQgkAAA==",
+	"H4sIAAAAAAAC/8RWy27bOhD9FYL3Lt3IeWyqXYM2QYoWCJIYXQRGQEtjialEssNhWjfQvxckZVuK5aYt",
+	"YmflB0ecwzkP6pFnujZagSLL00dusxJqEb5+QNR4BdZoZcH/YVAbQJIQlmuwVhRhgRYGeMotoVQFb5oR",
+	"R/jmJELO09tV4XS0LNSze8iINyP+SRdSbe5thLXfNeYDm4+4KbWCO+XqGeDz3XvVo/XOW9FsP7HIMrD2",
+	"jvRXUIPIZAA811gL4imXio6P+KqPVAQFYEC40foS9VxW8F6Q2A5g7qrqToka/nEuG12voJCWUJDU6q/b",
+	"7Yyjdd9n+OrCfx3aJiYXBC15eyCs12+n3mxG3ELmUNLi2mdC3PgUBAK+c1T6X7Pw62w5uI9fbvgoJojf",
+	"Ka6uB1kSGd74jaWaa/98JTNo8cch8c8XN/6YJMmPk08sILsGfJCZF8MDoA1K5YcH44Oxr9QGlDCSp/w4",
+	"/OUVQ2XAmlSrcNGW/KcfURDLRc7TNnviPMDSqc4XvijTikCFemFMJbPwRHJvo0ViQPpv/yPMecr/S9YJ",
+	"mrTxmcS9w2FzsBlKEy3GvcHZXCOL4AIdkcWA+Wh8+LIYVhoZwBIKmHXBH3NXeTQn4/GLAehfIFsBONWF",
+	"4HXn6lrgYlVAmlEJzAI+tD5M6sUbszZdAQP0ngMtfbkx5Jc741BuD5y0LWO5p99Zfww/6+P9zfpM40zm",
+	"OaietXl62zf17bSZdhk4ByKpCpYDCVmx5dADCfj09hi0We+O2Y3bei0Gzt5d92rKEARB5KGbh4QOdunI",
+	"wfvqObyv6M9TkbOryJd94sxrWSjmzJA3Xbijuv4cFkb/7tyNMvo9fpfHAbVX+kriOxTC8DX+xxG9x9iY",
+	"KOGo1Ch/Qh4M0x+W574zsJPx2/1Bu/SvTyy+PjFRIYh8weCHtPREq5NBtDEGvWxtSEGHVfuSkiZJpTNR",
+	"lV62zbT5FQAA//+4FsANJA0AAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

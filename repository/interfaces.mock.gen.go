@@ -63,3 +63,48 @@ func (mr *MockRepositoryInterfaceMockRecorder) GetUserById(ctx, input interface{
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserById", reflect.TypeOf((*MockRepositoryInterface)(nil).GetUserById), ctx, input)
 }
+
+// GetUserByPhoneNumber mocks base method.
+func (m *MockRepositoryInterface) GetUserByPhoneNumber(ctx context.Context, input GetUserByPhoneNumberInput) (GetUserByPhoneNumberOutput, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserByPhoneNumber", ctx, input)
+	ret0, _ := ret[0].(GetUserByPhoneNumberOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserByPhoneNumber indicates an expected call of GetUserByPhoneNumber.
+func (mr *MockRepositoryInterfaceMockRecorder) GetUserByPhoneNumber(ctx, input interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByPhoneNumber", reflect.TypeOf((*MockRepositoryInterface)(nil).GetUserByPhoneNumber), ctx, input)
+}
+
+// UpdateUserFullNameOrPhoneNumber mocks base method.
+func (m *MockRepositoryInterface) UpdateUserFullNameOrPhoneNumber(ctx context.Context, input UpdateUserFullNameOrPhoneNumberInput) (UpdateUserFullNameOrPhoneNumberOutput, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateUserFullNameOrPhoneNumber", ctx, input)
+	ret0, _ := ret[0].(UpdateUserFullNameOrPhoneNumberOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateUserFullNameOrPhoneNumber indicates an expected call of UpdateUserFullNameOrPhoneNumber.
+func (mr *MockRepositoryInterfaceMockRecorder) UpdateUserFullNameOrPhoneNumber(ctx, input interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserFullNameOrPhoneNumber", reflect.TypeOf((*MockRepositoryInterface)(nil).UpdateUserFullNameOrPhoneNumber), ctx, input)
+}
+
+// UpdateUserSuccessfulLogin mocks base method.
+func (m *MockRepositoryInterface) UpdateUserSuccessfulLogin(ctx context.Context, input GetUserByIdInput) (UpdateUserSuccessfulLoginOutput, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateUserSuccessfulLogin", ctx, input)
+	ret0, _ := ret[0].(UpdateUserSuccessfulLoginOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateUserSuccessfulLogin indicates an expected call of UpdateUserSuccessfulLogin.
+func (mr *MockRepositoryInterfaceMockRecorder) UpdateUserSuccessfulLogin(ctx, input interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserSuccessfulLogin", reflect.TypeOf((*MockRepositoryInterface)(nil).UpdateUserSuccessfulLogin), ctx, input)
+}

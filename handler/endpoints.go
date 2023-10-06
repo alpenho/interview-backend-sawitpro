@@ -95,7 +95,7 @@ func (s *Server) Login(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, err)
 	}
 
-	resp := generated.RegistrationResponse{
+	resp := generated.LoginResponse{
 		Id:          &output.Id,
 		AccessToken: &tok,
 	}
@@ -116,8 +116,9 @@ func (s *Server) GetProfile(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, err)
 	}
 
-	var input repository.GetUserByIdInput
-	input.Id = content.UserId
+	input := repository.GetUserByIdInput{
+		Id: content.UserId,
+	}
 	data, err := s.Repository.GetUserById(ctx.Request().Context(), input)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusNotFound, err)
@@ -127,6 +128,51 @@ func (s *Server) GetProfile(ctx echo.Context) error {
 	response.FullName = &data.FullName
 	response.PhoneNumber = &data.PhoneNumber
 
+	return ctx.JSON(http.StatusOK, response)
+}
+
+// UpdateProfile implements generated.ServerInterface.
+func (s *Server) UpdateProfile(ctx echo.Context) error {
+	requestBody := new(generated.UpdateProfile)
+	ctx.Bind(requestBody)
+
+	err := validateUpdateProfileRequestBody(requestBody)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err)
+	}
+
+	reg := regexp.MustCompile(`^[B|b]earer\s`)
+	tokenString := reg.ReplaceAllString(ctx.Request().Header["Authorization"][0], "")
+	content, err := validateJWTToken(tokenString)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusForbidden, err)
+	}
+
+	input := repository.GetUserByIdInput{
+		Id: content.UserId,
+	}
+	data, err := s.Repository.GetUserById(ctx.Request().Context(), input)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, err)
+	}
+
+	if data.PhoneNumber != "" && requestBody.PhoneNumber != nil {
+		return echo.NewHTTPError(http.StatusConflict, "Phone number already exist, cannot update")
+	}
+
+	otherInput := repository.UpdateUserFullNameOrPhoneNumberInput{
+		Id:          content.UserId,
+		FullName:    requestBody.FullName,
+		PhoneNumber: requestBody.PhoneNumber,
+	}
+	_, err = s.Repository.UpdateUserFullNameOrPhoneNumber(ctx.Request().Context(), otherInput)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err)
+	}
+
+	response := generated.UpdateProfileResponse{
+		Message: "successfully update the profile",
+	}
 	return ctx.JSON(http.StatusOK, response)
 }
 
@@ -174,6 +220,35 @@ func validateLoginRequestBody(requestBody *generated.Login) error {
 	return nil
 }
 
+func validateUpdateProfileRequestBody(requestBody *generated.UpdateProfile) error {
+	errorMessageMap := map[int]string{
+		1: "one of the form data must be filled in",
+		2: "phone number doesn't have country code",
+		3: "phone number is below 10 number or more then 13 number",
+		4: "full name is below 3 character or more then 60 character",
+	}
+
+	if requestBody.PhoneNumber != nil {
+		validPhoneNumber := regexp.MustCompile(`^\+62`)
+		phoneNumberLength := len(*requestBody.PhoneNumber)
+
+		if !validPhoneNumber.MatchString(*requestBody.PhoneNumber) {
+			return fmt.Errorf(errorMessageMap[2])
+		} else if phoneNumberLength < 11 || phoneNumberLength > 14 {
+			return fmt.Errorf(errorMessageMap[3])
+		}
+	} else if requestBody.FullName != nil {
+		fullNameLength := len(*requestBody.FullName)
+
+		if fullNameLength < 3 || fullNameLength > 60 {
+			return fmt.Errorf(errorMessageMap[4])
+		}
+	} else {
+		return fmt.Errorf(errorMessageMap[1])
+	}
+	return nil
+}
+
 func verifyPassword(s string) (sixOrSixtyFour, number, upper, special bool) {
 	letters := 0
 	for _, c := range s {
@@ -206,4 +281,18 @@ func createNewJWTToken(content UserData) (string, error) {
 	}
 
 	return tok, nil
+}
+
+func validateJWTToken(tokenString string) (*CustomClaims, error) {
+	pubKey, err := os.ReadFile("rsakey.pem.pub")
+	if err != nil {
+		return nil, fmt.Errorf("error read public key: %w", err)
+	}
+
+	content, err := NewJWT(nil, pubKey).Validate(tokenString)
+	if err != nil {
+		return nil, fmt.Errorf("error validating jwt token: %w", err)
+	}
+
+	return content, nil
 }

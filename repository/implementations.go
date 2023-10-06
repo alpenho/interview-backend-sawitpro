@@ -34,7 +34,7 @@ func (r *Repository) UpdateUserSuccessfulLogin(ctx context.Context, input GetUse
 	return
 }
 
-func (r *Repository) UpdateUserFullNameAndPhoneNumber(ctx context.Context, input UpdateUserFullNameAndPhoneNumberInput) (output UpdateUserFullNameAndPhoneNumberOutput, err error) {
+func (r *Repository) UpdateUserFullNameOrPhoneNumber(ctx context.Context, input UpdateUserFullNameOrPhoneNumberInput) (output UpdateUserFullNameOrPhoneNumberOutput, err error) {
 	err = r.Db.QueryRowContext(ctx, "UPDATE users SET full_name = $1, phone_number = $2 WHERE id = $3 RETURNING id", input.FullName, input.PhoneNumber, input.Id).Scan(&output.Id)
 	if err != nil {
 		return
