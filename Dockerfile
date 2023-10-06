@@ -13,6 +13,9 @@ RUN GOPATH= go build -o /main cmd/main.go
 # This is the actual image that we will be using in production.
 FROM alpine:latest
 
+COPY rsakey.pem .
+COPY rsakey.pem.pub .
+
 # We need to copy the binary from the build image to the production image.
 COPY --from=Build /main .
 
