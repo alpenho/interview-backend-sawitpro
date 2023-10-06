@@ -20,3 +20,26 @@ type CreateUserInput struct {
 type CreateUserOutput struct {
 	Id int32
 }
+
+type GetUserByPhoneNumberInput struct {
+	PhoneNumber string
+}
+
+type GetUserByPhoneNumberOutput struct {
+	Id       int32
+	Password string
+}
+
+type UpdateUserSuccessfulLoginOutput struct {
+	SuccessfulLogin int32
+}
+
+type UpdateUserFullNameAndPhoneNumberInput struct {
+	Id          int32
+	PhoneNumber string
+	FullName    string
+}
+
+type UpdateUserFullNameAndPhoneNumberOutput struct {
+	Id int32
+}

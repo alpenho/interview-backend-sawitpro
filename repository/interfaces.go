@@ -9,4 +9,7 @@ import "context"
 type RepositoryInterface interface {
 	GetUserById(ctx context.Context, input GetUserByIdInput) (output GetUserByIdOutput, err error)
 	CreateUser(ctx context.Context, input CreateUserInput) (output CreateUserOutput, err error)
+	GetUserByPhoneNumber(ctx context.Context, input GetUserByPhoneNumberInput) (output GetUserByPhoneNumberOutput, err error)
+	UpdateUserSuccessfulLogin(ctx context.Context, input GetUserByIdInput) (output UpdateUserSuccessfulLoginOutput, err error)
+	UpdateUserFullNameAndPhoneNumber(ctx context.Context, input UpdateUserFullNameAndPhoneNumberInput) (output UpdateUserFullNameAndPhoneNumberOutput, err error)
 }

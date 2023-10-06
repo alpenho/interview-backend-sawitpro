@@ -13,15 +13,11 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// Login defines model for Login.
-type LoginResponse struct {
-	Id int32 `json:"id"`
-}
-
 type UserData struct {
 	Id          int32
 	FullName    string
 	PhoneNumber string
+	Password    string
 }
 
 // Registration implements generated.ServerInterface.
@@ -34,24 +30,25 @@ func (s *Server) Registration(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
-	prvKey, err := os.ReadFile("rsakey.pem")
+	hashPass, err := HashAndSalt(requestBody.Password)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusForbidden, err)
+		return echo.NewHTTPError(http.StatusInternalServerError, err)
 	}
 
-	var input repository.CreateUserInput
-	input.FullName = requestBody.FullName
-	input.PhoneNumber = requestBody.PhoneNumber
-	input.Password = HashAndSalt(requestBody.Password)
+	input := repository.CreateUserInput{
+		FullName:    requestBody.FullName,
+		PhoneNumber: requestBody.PhoneNumber,
+		Password:    hashPass,
+	}
 	output, err := s.Repository.CreateUser(ctx.Request().Context(), input)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err)
 	}
 
 	user := UserData{Id: output.Id}
-	tok, err := NewJWT(prvKey, nil).Create(time.Hour, user)
+	tok, err := createNewJWTToken(user)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusForbidden, err)
+		return echo.NewHTTPError(http.StatusInternalServerError, err)
 	}
 
 	resp := generated.RegistrationResponse{
@@ -71,9 +68,38 @@ func (s *Server) Login(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
-	response := new(LoginResponse)
-	response.Id = 1
-	return ctx.JSON(http.StatusOK, response)
+	input := repository.GetUserByPhoneNumberInput{
+		PhoneNumber: requestBody.PhoneNumber,
+	}
+	output, err := s.Repository.GetUserByPhoneNumber(ctx.Request().Context(), input)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, err)
+	}
+
+	user := UserData{Id: output.Id, Password: output.Password}
+	correct := comparePasswords(user.Password, requestBody.Password)
+	if !correct {
+		return echo.NewHTTPError(http.StatusBadRequest, "Incorrect Password")
+	}
+
+	otherInput := repository.GetUserByIdInput{
+		Id: output.Id,
+	}
+	_, err = s.Repository.UpdateUserSuccessfulLogin(ctx.Request().Context(), otherInput)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err)
+	}
+
+	tok, err := createNewJWTToken(user)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err)
+	}
+
+	resp := generated.RegistrationResponse{
+		Id:          &output.Id,
+		AccessToken: &tok,
+	}
+	return ctx.JSON(http.StatusOK, resp)
 }
 
 // GetProfile implements generated.ServerInterface.
@@ -166,4 +192,18 @@ func verifyPassword(s string) (sixOrSixtyFour, number, upper, special bool) {
 	}
 	sixOrSixtyFour = letters >= 6 || letters <= 64
 	return
+}
+
+func createNewJWTToken(content UserData) (string, error) {
+	prvKey, err := os.ReadFile("rsakey.pem")
+	if err != nil {
+		return "", fmt.Errorf("error read private key: %w", err)
+	}
+
+	tok, err := NewJWT(prvKey, nil).Create(time.Hour, content)
+	if err != nil {
+		return "", fmt.Errorf("error creating jwt token: %w", err)
+	}
+
+	return tok, nil
 }
