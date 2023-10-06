@@ -1,17 +1,28 @@
 package handler
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
+	"os"
 	"regexp"
 	"unicode"
 
 	"github.com/SawitProRecruitment/UserService/generated"
+	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 )
 
 // Login defines model for Login.
 type LoginResponse struct {
 	Id int32 `json:"id"`
+}
+
+type CustomClaims struct {
+	Id          int32  `json:"id"`
+	FullName    string `json:"full_name"`
+	PhoneNumber string `json:"phone_number"`
+	jwt.StandardClaims
 }
 
 // Registration implements generated.ServerInterface.
@@ -48,11 +59,37 @@ func (*Server) Login(ctx echo.Context) error {
 
 // GetProfile implements generated.ServerInterface.
 func (*Server) GetProfile(ctx echo.Context) error {
+	reg := regexp.MustCompile(`^[B|b]earer\s`)
+	tokenString := reg.ReplaceAllString(ctx.Request().Header["Authorization"][0], "")
+	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+			error_message := fmt.Sprintf("Expected token algorithm '%v' but got '%v'", jwt.SigningMethodRS256.Name, token.Header)
+			return nil, errors.New(error_message)
+		}
+
+		verifyBytes, err := os.ReadFile("rsakey.pem.pub")
+		if err != nil {
+			return nil, err
+		}
+
+		verifyKey, err := jwt.ParseRSAPublicKeyFromPEM(verifyBytes)
+		if err != nil {
+			return nil, err
+		}
+
+		return verifyKey, nil
+	})
+
+	if err != nil {
+		return echo.NewHTTPError(http.StatusForbidden, err)
+	}
+
 	response := new(generated.ProfileDataResponse)
-	var fullName string = "Alpen Halim"
-	var phoneNumber string = "+6285883949378"
-	response.FullName = &fullName
-	response.PhoneNumber = &phoneNumber
+	if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid {
+		response.FullName = &claims.FullName
+		response.PhoneNumber = &claims.PhoneNumber
+	}
+
 	return ctx.JSON(http.StatusOK, response)
 }
 

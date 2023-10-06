@@ -43,6 +43,8 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
   /my-profile:
     get:
+      security:
+        - BearerAuth: []
       summary: Getting detail profile
       operationId: getProfile
       responses:
@@ -131,3 +133,8 @@ components:
       properties:
         message:
           type: string
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
