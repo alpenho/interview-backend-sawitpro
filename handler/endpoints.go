@@ -38,17 +38,11 @@ func (s *Server) Registration(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, err)
 	}
 
-	pubKey, err := os.ReadFile("rsakey.pem.pub")
-	if err != nil {
-		return echo.NewHTTPError(http.StatusForbidden, err)
-	}
-
 	var user UserData
 	user.Id = 321
 	user.FullName = requestBody.FullName
 	user.PhoneNumber = requestBody.PhoneNumber
-	jwtToken := NewJWT(prvKey, pubKey)
-	tok, err := jwtToken.Create(time.Hour, user)
+	tok, err := NewJWT(prvKey, nil).Create(time.Hour, user)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusForbidden, err)
 	}
@@ -78,21 +72,14 @@ func (*Server) Login(ctx echo.Context) error {
 
 // GetProfile implements generated.ServerInterface.
 func (*Server) GetProfile(ctx echo.Context) error {
-	prvKey, err := os.ReadFile("rsakey.pem")
-	if err != nil {
-		return echo.NewHTTPError(http.StatusForbidden, err)
-	}
-
 	pubKey, err := os.ReadFile("rsakey.pem.pub")
 	if err != nil {
 		return echo.NewHTTPError(http.StatusForbidden, err)
 	}
 
-	jwtToken := NewJWT(prvKey, pubKey)
-
 	reg := regexp.MustCompile(`^[B|b]earer\s`)
 	tokenString := reg.ReplaceAllString(ctx.Request().Header["Authorization"][0], "")
-	content, err := jwtToken.Validate(tokenString)
+	content, err := NewJWT(nil, pubKey).Validate(tokenString)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusForbidden, err)
 	}

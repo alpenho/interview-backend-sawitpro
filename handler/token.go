@@ -8,8 +8,8 @@ import (
 )
 
 type JWT struct {
-	privateKey []byte
-	publicKey  []byte
+	privateKey *[]byte
+	publicKey  *[]byte
 }
 
 type CustomClaims struct {
@@ -21,13 +21,13 @@ type CustomClaims struct {
 
 func NewJWT(privateKey []byte, publicKey []byte) JWT {
 	return JWT{
-		privateKey: privateKey,
-		publicKey:  publicKey,
+		privateKey: &privateKey,
+		publicKey:  &publicKey,
 	}
 }
 
 func (j JWT) Create(ttl time.Duration, content UserData) (string, error) {
-	key, err := jwt.ParseRSAPrivateKeyFromPEM(j.privateKey)
+	key, err := jwt.ParseRSAPrivateKeyFromPEM(*j.privateKey)
 	if err != nil {
 		return "", fmt.Errorf("create: parse key: %w", err)
 	}
@@ -51,7 +51,7 @@ func (j JWT) Create(ttl time.Duration, content UserData) (string, error) {
 }
 
 func (j JWT) Validate(token string) (*CustomClaims, error) {
-	key, err := jwt.ParseRSAPublicKeyFromPEM(j.publicKey)
+	key, err := jwt.ParseRSAPublicKeyFromPEM(*j.publicKey)
 	if err != nil {
 		return nil, fmt.Errorf("validate: parse key: %w", err)
 	}
