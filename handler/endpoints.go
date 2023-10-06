@@ -1,15 +1,14 @@
 package handler
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"regexp"
+	"time"
 	"unicode"
 
 	"github.com/SawitProRecruitment/UserService/generated"
-	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 )
 
@@ -18,11 +17,10 @@ type LoginResponse struct {
 	Id int32 `json:"id"`
 }
 
-type CustomClaims struct {
-	Id          int32  `json:"id"`
-	FullName    string `json:"full_name"`
-	PhoneNumber string `json:"phone_number"`
-	jwt.StandardClaims
+type UserData struct {
+	Id          int32
+	FullName    string
+	PhoneNumber string
 }
 
 // Registration implements generated.ServerInterface.
@@ -31,14 +29,35 @@ func (s *Server) Registration(ctx echo.Context) error {
 	ctx.Bind(requestBody)
 
 	err := validateRegistrationRequestBody(requestBody)
-	if err != "" {
+	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err)
+	}
+
+	prvKey, err := os.ReadFile("rsakey.pem")
+	if err != nil {
+		return echo.NewHTTPError(http.StatusForbidden, err)
+	}
+
+	pubKey, err := os.ReadFile("rsakey.pem.pub")
+	if err != nil {
+		return echo.NewHTTPError(http.StatusForbidden, err)
+	}
+
+	var user UserData
+	user.Id = 321
+	user.FullName = requestBody.FullName
+	user.PhoneNumber = requestBody.PhoneNumber
+	jwtToken := NewJWT(prvKey, pubKey)
+	tok, err := jwtToken.Create(time.Hour, user)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusForbidden, err)
 	}
 
 	var resp generated.RegistrationResponse
 	var id int32 = 321
 	resp.Id = &id
 	resp.FullName = &requestBody.FullName
+	resp.AccessToken = &tok
 	return ctx.JSON(http.StatusOK, resp)
 }
 
@@ -48,7 +67,7 @@ func (*Server) Login(ctx echo.Context) error {
 	ctx.Bind(requestBody)
 
 	err := validateLoginRequestBody(requestBody)
-	if err != "" {
+	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
@@ -59,43 +78,35 @@ func (*Server) Login(ctx echo.Context) error {
 
 // GetProfile implements generated.ServerInterface.
 func (*Server) GetProfile(ctx echo.Context) error {
+	prvKey, err := os.ReadFile("rsakey.pem")
+	if err != nil {
+		return echo.NewHTTPError(http.StatusForbidden, err)
+	}
+
+	pubKey, err := os.ReadFile("rsakey.pem.pub")
+	if err != nil {
+		return echo.NewHTTPError(http.StatusForbidden, err)
+	}
+
+	jwtToken := NewJWT(prvKey, pubKey)
+
 	reg := regexp.MustCompile(`^[B|b]earer\s`)
 	tokenString := reg.ReplaceAllString(ctx.Request().Header["Authorization"][0], "")
-	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			error_message := fmt.Sprintf("Expected token algorithm '%v' but got '%v'", jwt.SigningMethodRS256.Name, token.Header)
-			return nil, errors.New(error_message)
-		}
-
-		verifyBytes, err := os.ReadFile("rsakey.pem.pub")
-		if err != nil {
-			return nil, err
-		}
-
-		verifyKey, err := jwt.ParseRSAPublicKeyFromPEM(verifyBytes)
-		if err != nil {
-			return nil, err
-		}
-
-		return verifyKey, nil
-	})
-
+	content, err := jwtToken.Validate(tokenString)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusForbidden, err)
 	}
 
 	response := new(generated.ProfileDataResponse)
-	if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid {
-		response.FullName = &claims.FullName
-		response.PhoneNumber = &claims.PhoneNumber
-	}
+	response.FullName = &content.FullName
+	response.PhoneNumber = &content.PhoneNumber
 
 	return ctx.JSON(http.StatusOK, response)
 }
 
-func validateRegistrationRequestBody(requestBody *generated.Registration) (error_message string) {
+func validateRegistrationRequestBody(requestBody *generated.Registration) error {
 	errorMessageMap := map[int]string{
-		1: "All of the form data must be filled in",
+		1: "all of the form data must be filled in",
 		2: "phone number doesn't have country code",
 		3: "phone number is below 10 number or more then 13 number",
 		4: "full name is below 3 character or more then 60 character",
@@ -110,32 +121,31 @@ func validateRegistrationRequestBody(requestBody *generated.Registration) (error
 	validLength, haveNumber, haveUppercase, haveSpecialChar := verifyPassword(requestBody.Password)
 
 	if requestBody.FullName == "" || requestBody.Password == "" || requestBody.PhoneNumber == "" {
-		error_message = errorMessageMap[1]
+		return fmt.Errorf(errorMessageMap[1])
 	} else if !validPhoneNumber.MatchString(requestBody.PhoneNumber) {
-		error_message = errorMessageMap[2]
+		return fmt.Errorf(errorMessageMap[2])
 	} else if phoneNumberLength < 11 || phoneNumberLength > 14 {
-		error_message = errorMessageMap[3]
+		return fmt.Errorf(errorMessageMap[3])
 	} else if fullNameLength < 3 || fullNameLength > 60 {
-		error_message = errorMessageMap[4]
+		return fmt.Errorf(errorMessageMap[4])
 	} else if !validLength {
-		error_message = errorMessageMap[5]
+		return fmt.Errorf(errorMessageMap[5])
 	} else if !haveNumber {
-		error_message = errorMessageMap[6]
+		return fmt.Errorf(errorMessageMap[6])
 	} else if !haveUppercase {
-		error_message = errorMessageMap[7]
+		return fmt.Errorf(errorMessageMap[7])
 	} else if !haveSpecialChar {
-		error_message = errorMessageMap[8]
+		return fmt.Errorf(errorMessageMap[8])
 	}
-
-	return error_message
+	return nil
 }
 
-func validateLoginRequestBody(requestBody *generated.Login) (error_message string) {
+func validateLoginRequestBody(requestBody *generated.Login) error {
 	if requestBody.Password == "" || requestBody.PhoneNumber == "" {
-		error_message = "All of the form data must be filled in"
+		return fmt.Errorf("all of the form data must be filled in")
 	}
 
-	return error_message
+	return nil
 }
 
 func verifyPassword(s string) (sixOrSixtyFour, number, upper, special bool) {
